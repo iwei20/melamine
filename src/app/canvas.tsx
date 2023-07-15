@@ -1,5 +1,5 @@
 "use client"
-import { MouseEvent, WheelEvent, useState } from "react";
+import { MouseEvent, WheelEvent, useEffect, useState } from "react";
 
 export default function Canvas() {
     
@@ -11,6 +11,8 @@ export default function Canvas() {
     const [cursorX, setCursorX] = useState(0.0);
     const [cursorY, setCursorY] = useState(0.0);
     const [held, setHeld] = useState(false);
+    const [canvasWidth, setCanvasWidth] = useState(0);
+    const [canvasHeight, setCanvasHeight] = useState(0);
     const [pathPoints, setPathPoints] = useState(Array<Array<[number, number]>>);
     const [mode, setMode] = useState(CanvasMode.PATH);
     const [zoom, setZoom] = useState(1);
@@ -82,6 +84,15 @@ export default function Canvas() {
         CanvasModeImpl[mode].onMouseUp(e);
     }
 
+    function onMouseLeave(e: MouseEvent) {
+        setHeld(false);
+    }
+
+    function onMouseEnter(e: MouseEvent) {
+        let primaryPressed = e.buttons % 2 === 1;
+        setHeld(primaryPressed);
+    }
+
     function clamp(n: number, min_range: number, max_range: number) {
         return Math.max(min_range, Math.min(n, max_range));
     }
@@ -93,17 +104,24 @@ export default function Canvas() {
         setZoom(clamp(zoom - SCROLL_MULTIPLIER * e.deltaY, MIN_ZOOM, MAX_ZOOM));
     }
 
+    useEffect(() => {
+        setCanvasWidth(window.innerWidth);
+        setCanvasHeight(window.innerHeight);
+    }, []);
+
     return (
     <svg 
         className="bg-white h-screen w-screen" 
         onMouseMove={onMouseMove} 
         onMouseDown={onMouseDown} 
         onMouseUp={onMouseUp} 
+        onMouseLeave={onMouseLeave}
+        onMouseEnter={onMouseEnter}
         onWheel={onWheel}
-        viewBox={`0 0 ${window.innerWidth} ${window.innerHeight}`}
+        viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
         xmlns="http://www.w3.org/2000/svg">
         <g transform={`scale(${zoom})`} transform-origin="50% 50%">
-            {pathPoints.map((points) => <Path points={points} strokeWidth={1/zoom}/>)}
+            {pathPoints.map((points, index) => <Path key={`path${index}`} points={points} strokeWidth={1/zoom}/>)}
         </g>
     </svg>
     );
@@ -123,5 +141,5 @@ function Path(prop: PathProps) {
         return `${index === 0 ? MOVE : LINE_TO} ${x} ${y}`;
     }
 
-    return <path d={prop.points.map(pointToStr).join(' ')} stroke="black" stroke-width={prop.strokeWidth} fill="transparent" shape-rendering="geometricPrecision"/>
+    return <path d={prop.points.map(pointToStr).join(' ')} stroke="black" strokeWidth={prop.strokeWidth} fill="transparent" shapeRendering="geometricPrecision"/>
 }
