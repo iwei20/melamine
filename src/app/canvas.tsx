@@ -1,5 +1,4 @@
 "use client"
-import { Mina } from "next/font/google";
 import { MouseEvent, WheelEvent, useState } from "react";
 
 export default function Canvas() {
@@ -63,7 +62,7 @@ export default function Canvas() {
     function setMousePos(e: MouseEvent) {
         let g = document.getElementsByTagName("g")[0];
         let domToSVG = g.getScreenCTM()?.inverse();
-        let point = new DOMPoint(e.clientX, e.clientY).matrixTransform(domToSVG);
+        let point = new DOMPoint(e.pageX, e.pageY).matrixTransform(domToSVG);
         setCursorX(point.x);
         setCursorY(point.y);
     }
@@ -101,6 +100,7 @@ export default function Canvas() {
         onMouseDown={onMouseDown} 
         onMouseUp={onMouseUp} 
         onWheel={onWheel}
+        viewBox={`0 0 ${window.innerWidth} ${window.innerHeight}`}
         xmlns="http://www.w3.org/2000/svg">
         <g transform={`scale(${zoom})`} transform-origin="50% 50%">
             {pathPoints.map((points) => <Path points={points} strokeWidth={1/zoom}/>)}
