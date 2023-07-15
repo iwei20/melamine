@@ -1,5 +1,6 @@
 "use client"
-import { MouseEvent, useState, useRef } from "react";
+import { Mina } from "next/font/google";
+import { MouseEvent, WheelEvent, useState } from "react";
 
 export default function Canvas() {
     
@@ -7,6 +8,13 @@ export default function Canvas() {
         PATH,
         ERASE
     };
+
+    const [cursorX, setCursorX] = useState(0.0);
+    const [cursorY, setCursorY] = useState(0.0);
+    const [held, setHeld] = useState(false);
+    const [pathPoints, setPathPoints] = useState(Array<Array<[number, number]>>);
+    const [mode, setMode] = useState(CanvasMode.PATH);
+    const [zoom, setZoom] = useState(1);
 
     interface CanvasModeFunctions {
         onMouseDown: (e: MouseEvent) => void;
@@ -52,15 +60,12 @@ export default function Canvas() {
         }
     }
 
-    const [cursorX, setCursorX] = useState(0.0);
-    const [cursorY, setCursorY] = useState(0.0);
-    const [held, setHeld] = useState(false);
-    const [pathPoints, setPathPoints] = useState(Array<Array<[number, number]>>);
-    const [mode, setMode] = useState(CanvasMode.PATH);
-
     function setMousePos(e: MouseEvent) {
-        setCursorX(e.pageX);
-        setCursorY(e.pageY);
+        let g = document.getElementsByTagName("g")[0];
+        let domToSVG = g.getScreenCTM()?.inverse();
+        let point = new DOMPoint(e.clientX, e.clientY).matrixTransform(domToSVG);
+        setCursorX(point.x);
+        setCursorY(point.y);
     }
 
     function onMouseDown(e: MouseEvent) {
@@ -72,15 +77,36 @@ export default function Canvas() {
         setMousePos(e);
         if (held) CanvasModeImpl[mode].onMouseMove(e);
     }
-    
+
     function onMouseUp(e: MouseEvent) {
         setHeld(false);
         CanvasModeImpl[mode].onMouseUp(e);
     }
 
-    return (<svg className="bg-white h-screen w-screen" onMouseMove={onMouseMove} onMouseDown={onMouseDown} onMouseUp={onMouseUp}>
-        {pathPoints.map((points) => <Path points={points}/>)}
-    </svg>);
+    function clamp(n: number, min_range: number, max_range: number) {
+        return Math.max(min_range, Math.min(n, max_range));
+    }
+
+    const SCROLL_MULTIPLIER = 0.001;
+    const MIN_ZOOM = 0.25;
+    const MAX_ZOOM = 5;
+    function onWheel(e: WheelEvent) {
+        setZoom(clamp(zoom - SCROLL_MULTIPLIER * e.deltaY, MIN_ZOOM, MAX_ZOOM));
+    }
+
+    return (
+    <svg 
+        className="bg-white h-screen w-screen" 
+        onMouseMove={onMouseMove} 
+        onMouseDown={onMouseDown} 
+        onMouseUp={onMouseUp} 
+        onWheel={onWheel}
+        xmlns="http://www.w3.org/2000/svg">
+        <g transform={`scale(${zoom})`} transform-origin="50% 50%">
+            {pathPoints.map((points) => <Path points={points} strokeWidth={1/zoom}/>)}
+        </g>
+    </svg>
+    );
 }
 
 const MOVE = "M";
@@ -88,6 +114,7 @@ const LINE_TO = "L";
 
 interface PathProps {
     points: Array<[number, number]>
+    strokeWidth: number
 }
 
 function Path(prop: PathProps) {
@@ -96,5 +123,5 @@ function Path(prop: PathProps) {
         return `${index === 0 ? MOVE : LINE_TO} ${x} ${y}`;
     }
 
-    return <path d={prop.points.map(pointToStr).join(' ')} stroke="black" fill="transparent" />
+    return <path d={prop.points.map(pointToStr).join(' ')} stroke="black" stroke-width={prop.strokeWidth} fill="transparent" shape-rendering="geometricPrecision"/>
 }
