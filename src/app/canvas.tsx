@@ -17,10 +17,10 @@ export default function Canvas() {
     const CanvasModeImpl = {
         [CanvasMode.PATH]: {
             onMouseDown: function(e) {
-                PathHelpers.continuePath();
+                PathHelpers.beginPath();
             },
             onMouseMove: function(e) {
-                PathHelpers.beginPath();
+                PathHelpers.continuePath();
             },
             onMouseUp: function(e) {
         
@@ -63,16 +63,16 @@ export default function Canvas() {
         setCursorY(e.pageY);
     }
 
-    function onMouseMove(e: MouseEvent) {
-        setMousePos(e);
-        if (held) CanvasModeImpl[mode].onMouseMove(e);
-    }
-
     function onMouseDown(e: MouseEvent) {
         setHeld(true);
         CanvasModeImpl[mode].onMouseDown(e);
     }
 
+    function onMouseMove(e: MouseEvent) {
+        setMousePos(e);
+        if (held) CanvasModeImpl[mode].onMouseMove(e);
+    }
+    
     function onMouseUp(e: MouseEvent) {
         setHeld(false);
         CanvasModeImpl[mode].onMouseUp(e);
