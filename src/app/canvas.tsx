@@ -1,6 +1,6 @@
 "use client"
 import { MouseEvent, WheelEvent, useEffect, useState, useRef, useReducer } from "react";
-import { InputBuilder, InputState, InputType, MOUSE_BUTTONS } from "./input";
+import { InputBuilder, InputState, InputType } from "./input";
 
 enum CanvasMode {
     PATH,
@@ -44,7 +44,7 @@ export default function Canvas() {
         const ref = useRef(initialState);
       
         useEffect(() => {
-          ref.current = state;
+            ref.current = state;
         }, [state]);
       
         return [ref, setState, state] as const;
