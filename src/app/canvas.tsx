@@ -1,5 +1,6 @@
 "use client"
-import { MouseEvent, WheelEvent, useEffect, useState } from "react";
+import { MouseEvent, WheelEvent, useEffect, useState, useRef, useReducer } from "react";
+import { InputBuilder, InputState, InputType, MOUSE_BUTTONS } from "./input";
 
 enum CanvasMode {
     PATH,
@@ -23,7 +24,7 @@ function matmul(matrixA: Array<number>, matrixB: Array<number>) {
     ];
 }
 
-function matmul_multiple(...matrices: number[][]) {
+function matmul_multiple(...matrices: number[][]): number[] {
     return matrices.reduceRight(
         (accumulator, current) => matmul(current, accumulator)
     );
@@ -38,25 +39,48 @@ function translate(offsetX: number, offsetY: number) {
 }
 
 export default function Canvas() {
-    const [rawCursorX, setRawCursorX] = useState(0.0);
-    const [rawCursorY, setRawCursorY] = useState(0.0);
-    const [cursorX, setCursorX] = useState(0.0);
-    const [cursorY, setCursorY] = useState(0.0);
-    const [primaryHeld, setPrimaryHeld] = useState(false);
+    const useStateRef = <T extends unknown>(initialState: T) => {
+        const [state, setState] = useState(initialState);
+        const ref = useRef(initialState);
+      
+        useEffect(() => {
+          ref.current = state;
+        }, [state]);
+      
+        return [ref, setState, state] as const;
+    };
 
-    const [canvasWidth, setCanvasWidth] = useState(0);
-    const [canvasHeight, setCanvasHeight] = useState(0);
+    const [rawCursorX, setRawCursorX, rawCursorXState] = useStateRef(0.0);
+    const [rawCursorY, setRawCursorY, rawCursorYState] = useStateRef(0.0);
+    const [cursorX, setCursorX] = useStateRef(0.0);
+    const [cursorY, setCursorY] = useStateRef(0.0);
 
-    const [pathPoints, setPathPoints] = useState(Array<Array<[number, number]>>);
-    const [mode, setMode] = useState(CanvasMode.PATH);
+    const [canvasWidth, setCanvasWidth] = useStateRef(0);
+    const [canvasHeight, setCanvasHeight] = useStateRef(0);
 
-    const [zoom, setZoom] = useState(1);
-    const [transformMatrix, setTransformMatrix] = useState([1, 0, 0, 1, 0, 0]);
-    const [lastScroll, setLastScroll] = useState(0);
+    const [pathPoints, setPathPoints, pathPointsState] = useStateRef(Array<Array<[number, number]>>());
+    const [mode, setMode] = useStateRef(CanvasMode.PATH);
 
-    const [offsetX, setOffsetX] = useState(0.0);
-    const [offsetY, setOffsetY] = useState(0.0);
-       
+    const [zoom, setZoom] = useStateRef(1);
+    const [transformMatrix, setTransformMatrix] = useStateRef([1, 0, 0, 1, 0, 0]);
+    
+    const [inputState, setInputState] = useStateRef(
+        InputState.new()
+                  .registerInputDown({input: InputBuilder.fromMouse(0).build(), callback: (e: MouseEvent) => CanvasModeImpl[mode.current].onMouseDown(e)})
+                  .registerInputMouseMove({input: InputBuilder.fromMouse(0).build(), callback: (e: MouseEvent) => {
+                        CanvasModeImpl[mode.current].onMouseMove(e);
+                  }})
+                  .registerInputMouseMove({input: InputBuilder.none(), callback: (e: MouseEvent) => {
+                        MouseHelpers.updateRawMousePos(e);
+                  }})
+                  .registerInputDown({input: InputBuilder.fromWheel(-1).build(), callback: (e: WheelEvent) => {
+                        TransformHelpers.scrollZoom(e.deltaY);
+                  }})
+                  .registerInputDown({input: InputBuilder.fromWheel(1).build(), callback: (e: WheelEvent) => {
+                        TransformHelpers.scrollZoom(e.deltaY);
+                  }})
+    );
+
     interface CanvasModeFunctions {
         onMouseDown: (e: MouseEvent) => void;
         onMouseMove: (e: MouseEvent) => void;
@@ -78,10 +102,10 @@ export default function Canvas() {
 
         [CanvasMode.ERASE]: {
             onMouseDown: function(e) {
-                PathHelpers.continuePath();
+
             },
             onMouseMove: function(e) {
-                PathHelpers.beginPath();
+
             },
             onMouseUp: function(e) {
         
@@ -91,108 +115,91 @@ export default function Canvas() {
 
     const PathHelpers = {
         beginPath: function() {
-            let pointsArray: Array<[number, number]> = [[cursorX, cursorY]];
-            setPathPoints(pathPoints.concat([pointsArray]));
+            let pointsArray: Array<[number, number]> = [[cursorX.current, cursorY.current]];
+            setPathPoints(pathPoints.current.concat([pointsArray]));
         },
         continuePath: function() {
-            let tempPathPoints = [...pathPoints];
-            tempPathPoints.at(-1)?.push([cursorX, cursorY]);
+            let tempPathPoints = [...pathPoints.current];
+            tempPathPoints.at(-1)?.push([cursorX.current, cursorY.current]);
             setPathPoints(tempPathPoints);
         }
     }
 
-    const SCROLL_MULTIPLIER = 3/2000;
-    const MIN_ZOOM = 0.3;
-    const MAX_ZOOM = 5;
-    function adjustZoom(scrollAmount: number) {
-        let shouldZoomIn = zoom < MAX_ZOOM && scrollAmount < 0;
-        let shouldZoomOut = zoom > MIN_ZOOM && scrollAmount > 0;
-        if (shouldZoomIn || shouldZoomOut) {
-            let newZoom = Number((zoom - SCROLL_MULTIPLIER * scrollAmount).toFixed(2));
-
-            let moveToOriginMatrix = translate(-cursorX, -cursorY);
-            let scaleMatrix = scale(newZoom / zoom);
-            let moveBackMatrix = translate(cursorX, cursorY);
+    const TransformHelpers = {
+        SCROLL_MULTIPLIER: 3/2000,
+        MIN_ZOOM: 0.3,
+        MAX_ZOOM: 5,
+        scrollZoom: function(scrollAmount: number) {
+            let shouldZoomIn = zoom.current < this.MAX_ZOOM && scrollAmount < 0;
+            let shouldZoomOut = zoom.current > this.MIN_ZOOM && scrollAmount > 0;
+            if (shouldZoomIn || shouldZoomOut) {
+                let newZoom = Number((zoom.current - this.SCROLL_MULTIPLIER * scrollAmount).toFixed(2));
+                this.adjustZoom(newZoom);
+            }
+        },
+        adjustZoom: function(newZoom: number) {
+            let moveToOriginMatrix = translate(-cursorX.current, -cursorY.current);
+            let scaleMatrix = scale(newZoom / zoom.current);
+            let moveBackMatrix = translate(cursorX.current, cursorY.current);
             setTransformMatrix(matmul_multiple(
                 moveBackMatrix, 
                 scaleMatrix, 
                 moveToOriginMatrix,
-                transformMatrix
+                transformMatrix.current
             ));
             setZoom(newZoom);
+        },
+        reset: function() {
+            let identity = [1, 0, 0, 1, 0, 0];
+            setTransformMatrix(identity);
         }
     }
 
-    function updateRawMousePos(e: MouseEvent) {
-        setRawCursorX(e.pageX);
-        setRawCursorY(e.pageY);
-    }
-
-    function updateMousePos() {
-        let g = document.getElementsByTagName("g")[0];
-        let domToSVG = g.getScreenCTM()?.inverse();
-        let point = new DOMPoint(rawCursorX, rawCursorY).matrixTransform(domToSVG);
-        setCursorX(point.x);
-        setCursorY(point.y);
-    }
-
-    function updatePrimaryHeld(e: MouseEvent) {
-        setPrimaryHeld(e.buttons % 2 === 1);
-    }
-
-    function onMouseDown(e: MouseEvent) {
-        updatePrimaryHeld(e);
-        CanvasModeImpl[mode].onMouseDown(e);
-    }
-
-    function onMouseMove(e: MouseEvent) {
-        updateRawMousePos(e);
-        if (primaryHeld) CanvasModeImpl[mode].onMouseMove(e);
-    }
-
-    function onMouseUp(e: MouseEvent) {
-        updatePrimaryHeld(e);
-        CanvasModeImpl[mode].onMouseUp(e);
-    }
-
-    function onMouseLeave(e: MouseEvent) {
-        onMouseUp(e);
-    }
-
-    function onMouseEnter(e: MouseEvent) {
-        onMouseDown(e);
-    }
-
-    function clamp(n: number, min_range: number, max_range: number) {
-        return Math.max(min_range, Math.min(n, max_range));
-    }
-
-    function onWheel(e: WheelEvent) {
-        adjustZoom(e.deltaY);
-    }
+    const MouseHelpers = {
+        updateRawMousePos: function(e: MouseEvent) {
+            setRawCursorX(e.pageX);
+            setRawCursorY(e.pageY);
+        },
+        updateMousePos: function() {
+            let g = document.getElementsByTagName("g")[0];
+            let domToSVG = g.getScreenCTM()?.inverse();
+            let point = new DOMPoint(rawCursorX.current, rawCursorY.current).matrixTransform(domToSVG);
+            setCursorX(point.x);
+            setCursorY(point.y);
+        },
+    };
 
     useEffect(() => {
         setCanvasWidth(window.innerWidth);
         setCanvasHeight(window.innerHeight);
-    }, []);
+    });
 
     useEffect(() => {
-        updateMousePos();
-    }, [rawCursorX, rawCursorY]);
+        MouseHelpers.updateMousePos();
+    }, [rawCursorXState, rawCursorYState]);
+
+    useEffect(() => {            
+        console.log(pathPoints);
+    }, [pathPointsState]);
 
     return (
     <svg 
         className="bg-white h-screen w-screen" 
-        onMouseMove={onMouseMove} 
-        onMouseDown={onMouseDown} 
-        onMouseUp={onMouseUp} 
-        onMouseLeave={onMouseLeave}
-        onMouseEnter={onMouseEnter}
-        onWheel={onWheel}
-        viewBox={`0 0 ${canvasWidth} ${canvasHeight}`}
-        xmlns="http://www.w3.org/2000/svg">
-        <g transform={`matrix(${transformMatrix})`} >
-            {pathPoints.map((points, index) => <Path key={`path${index}`} points={points} strokeWidth={1/zoom}/>)}
+
+        onMouseDown={(e) => {setInputState(inputState.current.onInputDown(e, InputType.MOUSE));}} 
+        onWheel={(e) => setInputState(inputState.current.onInputDown(e, InputType.WHEEL))}
+        onKeyDown={(e) => setInputState(inputState.current.onInputDown(e, InputType.KEY))}
+        
+        onMouseUp={(e) => setInputState(inputState.current.onInputUp(e, InputType.MOUSE))} 
+        onKeyUp={(e) => setInputState(inputState.current.onInputUp(e, InputType.KEY))}
+        
+        onMouseMove={inputState.current.onMouseMove}
+
+        viewBox={`0 0 ${canvasWidth.current} ${canvasHeight.current}`}
+        xmlns="http://www.w3.org/2000/svg"
+    >
+        <g transform={`matrix(${transformMatrix.current})`} >
+            {pathPoints.current.map((points, index) => <Path key={`path${index}`} points={points} strokeWidth={1/zoom.current}/>)}
         </g>
     </svg>
     );
