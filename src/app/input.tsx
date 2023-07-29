@@ -1,4 +1,3 @@
-"use client"
 import { Map, Record, Set } from "immutable";
 import { MouseEvent, WheelEvent, KeyboardEvent } from "react";
 
@@ -129,139 +128,146 @@ export enum InputType {
     WHEEL
 }
 
-export class InputState {
+function isKeyboardEvent(e: KeyboardEvent | MouseEvent | WheelEvent, inputType: InputType): e is KeyboardEvent {
+    return inputType === InputType.KEY;
+}
+
+function isMouseEvent(e: KeyboardEvent | MouseEvent | WheelEvent, inputType: InputType): e is MouseEvent {
+    return inputType === InputType.MOUSE;
+}
+
+function isWheelEvent(e: KeyboardEvent | MouseEvent | WheelEvent, inputType: InputType): e is WheelEvent {
+    return inputType === InputType.WHEEL;
+}
+
+export class InputBindings {
     // NOTE: Custom immutable.js value-equality is provided only by immutable.js Maps
     readonly inputToDown: Map<Record<Input>, InputCallback>;
     readonly inputToMouseMove: Map<Record<Input>, (e: MouseEvent) => void>;
     readonly inputToUp: Map<Record<Input>, InputCallback>;
-    readonly held: Set<Record<Input>>;
 
-    private constructor  (
+    private constructor(
         inputToDown: Map<Record<Input>, InputCallback>, 
         inputToMouseMove: Map<Record<Input>, (e: MouseEvent) => void>, 
         inputToUp: Map<Record<Input>, InputCallback>,
-        held: Set<Record<MouseInput | KeyInput>>
     ) {
         this.inputToDown = inputToDown;
         this.inputToMouseMove = inputToMouseMove;
         this.inputToUp = inputToUp;
+    }
+
+    static readonly new = () => {
+        return new InputBindings(
+            Map<Record<Input>, InputCallback>(),
+            Map<Record<Input>, (e: MouseEvent) => void>(),
+            Map<Record<Input>, InputCallback>(),
+        );
+    }
+
+    static readonly from = (
+        inputToDown: Map<Record<Input>, InputCallback>, 
+        inputToMouseMove: Map<Record<Input>, (e: MouseEvent) => void>, 
+        inputToUp: Map<Record<Input>, InputCallback>,
+    ) => {
+        return new InputBindings(inputToDown, inputToMouseMove, inputToUp);
+    }
+
+    readonly registerInputDown = (entry: InputEntry) => {
+        return InputBindings.from(
+            this.inputToDown.set(factory(entry.input), entry.callback),
+            this.inputToMouseMove,
+            this.inputToUp,
+        );
+    }
+
+    readonly registerInputMouseMove = (entry: MouseMoveEntry) => {
+        return InputBindings.from(
+            this.inputToDown,
+            this.inputToMouseMove.set(factory(entry.input), entry.callback),
+            this.inputToUp,
+        );
+    }
+
+    readonly registerInputUp = (entry: InputEntry) => {
+        return InputBindings.from(
+            this.inputToDown,
+            this.inputToMouseMove,
+            this.inputToUp.set(factory(entry.input), entry.callback),
+        );
+    }
+
+    readonly onInputDown = (e: KeyboardEvent | MouseEvent | WheelEvent, inputType: InputType) => {
+        if (isKeyboardEvent(e, inputType)) {
+            let input = KeyInput.fromEvent(e);
+            let inputCallback = this.inputToDown.get(factory(input));
+            if (inputCallback !== undefined) (inputCallback as (e: KeyboardEvent) => void).call(null, e);
+        } else if (isMouseEvent(e, inputType)) {
+            let input = MouseInput.fromEvent(e);
+            let inputCallback = this.inputToDown.get(factory(input));
+            if (inputCallback !== undefined) (inputCallback as (e: MouseEvent) => void).call(null, e);
+        } else if (isWheelEvent(e, inputType)) {
+            let input = WheelInput.fromEvent(e);
+            let inputCallback = this.inputToDown.get(factory(input));
+            if (inputCallback !== undefined) inputCallback.call(null, e);
+        }
+    }
+
+    readonly onMouseMove = (e: MouseEvent, heldTracker: InputTracker) => {
+        for (let heldInput of heldTracker.held) {
+            let inputCallback = this.inputToMouseMove.get(heldInput);
+            if (inputCallback !== undefined) inputCallback.call(null, e);
+        }
+    }
+
+    readonly onInputUp = (e: KeyboardEvent | MouseEvent, inputType: InputType) => {
+        if (isKeyboardEvent(e, inputType)) {
+            let input = KeyInput.fromEvent(e);
+            let inputCallback = this.inputToUp.get(factory(input));
+            if (inputCallback !== undefined) (inputCallback as (e: KeyboardEvent) => void).call(null, e);
+        } else if (isMouseEvent(e, inputType)) {
+            let input = MouseInput.fromEvent(e);
+            let inputCallback = this.inputToUp.get(factory(input));
+            if (inputCallback !== undefined) (inputCallback as (e: MouseEvent) => void).call(null, e);
+        } 
+    }
+}
+
+export class InputTracker {
+    readonly held: Set<Record<Input>>;
+
+    private constructor(held: Set<Record<Input>>) {
         this.held = held;
     }
 
     static new() {
-        return new InputState(
-            Map<Record<Input>, InputCallback>(),
-            Map<Record<Input>, (e: MouseEvent) => void>(),
-            Map<Record<Input>, InputCallback>(),
-            Set<Record<MouseInput | KeyInput>>([factory(InputBuilder.none())])
-        );
+        return new InputTracker(Set<Record<MouseInput | KeyInput>>([factory(InputBuilder.none())]))
     }
 
-    static from(
-        inputToDown: Map<Record<Input>, InputCallback>, 
-        inputToMouseMove: Map<Record<Input>, (e: MouseEvent) => void>, 
-        inputToUp: Map<Record<Input>, InputCallback>,
-        held: Set<Record<MouseInput | KeyInput>>
-    ) {
-        return new InputState(inputToDown, inputToMouseMove, inputToUp, held);
+    static from(held: Set<Record<Input>>) {
+        return new InputTracker(held);
     }
 
-    registerInputDown(entry: InputEntry) {
-        return InputState.from(
-            this.inputToDown.set(factory(entry.input), entry.callback),
-            this.inputToMouseMove,
-            this.inputToUp,
-            this.held
-        );
+    with(input: Input) {
+        return InputTracker.from(this.held.add(factory(input)));
     }
 
-    registerInputMouseMove(entry: MouseMoveEntry) {
-        return InputState.from(
-            this.inputToDown,
-            this.inputToMouseMove.set(factory(entry.input), entry.callback),
-            this.inputToUp,
-            this.held
-        );
+    without(input: Input) {
+        return InputTracker.from(this.held.remove(factory(input)));
     }
 
-    registerInputUp(entry: InputEntry) {
-        return InputState.from(
-            this.inputToDown,
-            this.inputToMouseMove,
-            this.inputToUp.set(factory(entry.input), entry.callback),
-            this.held
-        );
-    }
-
-    static isKeyboardEvent(e: KeyboardEvent | MouseEvent | WheelEvent, inputType: InputType): e is KeyboardEvent {
-        return inputType === InputType.KEY;
-    }
-
-    static isMouseEvent(e: KeyboardEvent | MouseEvent | WheelEvent, inputType: InputType): e is MouseEvent {
-        return inputType === InputType.MOUSE;
-    }
-
-    static isWheelEvent(e: KeyboardEvent | MouseEvent | WheelEvent, inputType: InputType): e is WheelEvent {
-        return inputType === InputType.WHEEL;
-    }
-
-    onInputDown(e: KeyboardEvent | MouseEvent | WheelEvent, inputType: InputType, thisContext: any = null) {
-        if (InputState.isKeyboardEvent(e, inputType)) {
-            let input = KeyInput.fromEvent(e);
-            let inputCallback = this.inputToDown.get(factory(input));
-            if (inputCallback !== undefined) (inputCallback as (e: KeyboardEvent) => void).call(thisContext, e);
-            return InputState.from(
-                this.inputToDown,
-                this.inputToMouseMove,
-                this.inputToUp,
-                this.held.add(factory(input))
-            );
-        } else if (InputState.isMouseEvent(e, inputType)) {
-            let input = MouseInput.fromEvent(e);
-            let inputCallback = this.inputToDown.get(factory(input));
-            if (inputCallback !== undefined) (inputCallback as (e: MouseEvent) => void).call(thisContext, e);
-            return InputState.from(
-                this.inputToDown,
-                this.inputToMouseMove,
-                this.inputToUp,
-                this.held.add(factory(input))
-            );
-        } else if (InputState.isWheelEvent(e, inputType)) {
-            let input = WheelInput.fromEvent(e);
-            let inputCallback = this.inputToDown.get(factory(input));
-            if (inputCallback !== undefined) inputCallback.call(thisContext, e);
-            return this;
-        }
-        return this;
-    }
-
-    onMouseMove = (e: MouseEvent) => {
-        for (let heldInput of this.held) {
-            this.inputToMouseMove.get(heldInput)?.call(null, e);
-        }
-    }
-
-    onInputUp(e: KeyboardEvent | MouseEvent, inputType: InputType) {
-        if (InputState.isKeyboardEvent(e, inputType)) {
-            let input = KeyInput.fromEvent(e);
-            let inputCallback = this.inputToUp.get(factory(input));
-            if (inputCallback !== undefined) (inputCallback as (e: KeyboardEvent) => void).call(null, e);
-            return InputState.from(
-                this.inputToDown,
-                this.inputToMouseMove,
-                this.inputToUp,
-                this.held.remove(factory(input))
-            );  
+    withEvent(inputEvent: KeyboardEvent | MouseEvent, inputType: InputType) {
+        if (isKeyboardEvent(inputEvent, inputType)) {
+            return this.with(KeyInput.fromEvent(inputEvent));
         } else {
-            let input = MouseInput.fromEvent(e);
-            let inputCallback = this.inputToUp.get(factory(input));
-            if (inputCallback !== undefined) (inputCallback as (e: MouseEvent) => void).call(null, e);
-            return InputState.from(
-                this.inputToDown,
-                this.inputToMouseMove,
-                this.inputToUp,
-                this.held.remove(factory(input))
-            );
-        } 
+            return this.with(MouseInput.fromEvent(inputEvent));
+        }
+    }
+
+    withoutEvent(inputEvent: KeyboardEvent | MouseEvent, inputType: InputType) {
+        if (isKeyboardEvent(inputEvent, inputType)) {
+            return this.without(KeyInput.fromEvent(inputEvent));
+        } else {
+            return this.without(MouseInput.fromEvent(inputEvent));
+        }
     }
 }
