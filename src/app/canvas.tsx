@@ -2,6 +2,7 @@
 import { MouseEvent, KeyboardEvent, WheelEvent, useEffect, useRef } from "react";
 import { InputBuilder, InputBindings, InputType, InputTracker } from "./input";
 import { useStateRef } from "./usestateref";
+import path from "path";
 
 enum CanvasMode {
     PATH,
@@ -47,7 +48,7 @@ export default function Canvas() {
     const [rawCursorY, setRawCursorY] = useStateRef(0);
     const [cursorX, setCursorX] = useStateRef(0);
     const [cursorY, setCursorY] = useStateRef(0);
-    const MouseHelpers = {
+    const Mouse = {
         updateRawMousePos: (e: MouseEvent) => {
             setRawCursorX(e.pageX);
             setRawCursorY(e.pageY);
@@ -68,20 +69,6 @@ export default function Canvas() {
         setCanvasWidth(window.innerWidth);
         setCanvasHeight(window.innerHeight);
     });
-
-    // Paths
-    const [pathPoints, setPathPoints] = useStateRef(Array<Array<[number, number]>>());
-    const PathHelpers = {
-        beginPath: () => {
-            let pointsArray: Array<[number, number]> = [[cursorX.current, cursorY.current]];
-            setPathPoints(pathPoints => pathPoints.concat([pointsArray]));
-        },
-        continuePath: () => {
-            let tempPathPoints = [...pathPoints.current];
-            tempPathPoints.at(-1)?.push([cursorX.current, cursorY.current]);
-            setPathPoints(tempPathPoints);
-        }
-    };
     
     // Input handling
     const [inputBindings, setInputBindings] = useStateRef(
@@ -97,25 +84,25 @@ export default function Canvas() {
                     .registerInputMouseMove({
                         input: InputBuilder.none(), 
                         callback: (e: MouseEvent) => {
-                            MouseHelpers.updateRawMousePos(e);
-                            MouseHelpers.updateMousePos();
+                            Mouse.updateRawMousePos(e);
+                            Mouse.updateMousePos();
                         }
                     })
                     .registerInputDown({
                         input: InputBuilder.fromWheel(-1).build(), 
-                        callback: (e: WheelEvent) => TransformHelpers.scrollZoom(e.deltaY)
+                        callback: (e: WheelEvent) => Transform.scrollZoom(e.deltaY)
                     })
                     .registerInputDown({
                         input: InputBuilder.fromWheel(1).build(), 
-                        callback: (e: WheelEvent) => TransformHelpers.scrollZoom(e.deltaY)
+                        callback: (e: WheelEvent) => Transform.scrollZoom(e.deltaY)
                     })
                     .registerInputDown({
                         input: InputBuilder.fromKey("ArrowLeft").build(),
-                        callback: (e: KeyboardEvent) => ModeScroller.prev()
+                        callback: (e: KeyboardEvent) => Mode.prev()
                     })
                     .registerInputDown({
                         input: InputBuilder.fromKey("ArrowRight").build(),
-                        callback: (e: KeyboardEvent) => ModeScroller.next()
+                        callback: (e: KeyboardEvent) => Mode.next()
                     })
     );
     const [inputTracker, setInputTracker] = useStateRef(InputTracker.new());
@@ -126,7 +113,7 @@ export default function Canvas() {
         CanvasMode.PATH,
         CanvasMode.ERASE,
     ];
-    const ModeScroller = {
+    const Mode = {
         next: () => {
             setModeIndex(modeIndex => {
                 let result = modeIndex + 1;
@@ -159,49 +146,71 @@ export default function Canvas() {
     const CanvasModeImpl = {
         [CanvasMode.PATH]: {
             onMouseDown: (e) => {
-                PathHelpers.beginPath();
+                Paths.beginPath();
             },
             onMouseMove: (e) => {
-                PathHelpers.continuePath();
+                Paths.continuePath();
             },
-            onMouseUp: (e) => {
-         
-            }
+            onMouseUp: (e) => {}
         } as CanvasModeFunctions,
 
         [CanvasMode.ERASE]: {
-            onMouseDown: (e) => {
-
-            },
+            onMouseDown: (e) => {},
             onMouseMove: (e) => {
 
             },
-            onMouseUp: (e) => {
-        
-            }
+            onMouseUp: (e) => {}
         } as CanvasModeFunctions
     };
 
-    const IntersectionHelpers = {
-        getIntersectingElements: () => {
-            for (let point of pathPoints.current) {
-            }
+    // Paths
+    const [pathPoints, setPathPoints] = useStateRef(Array<Array<[number, number]>>());
+    const Paths = {
+        beginPath: () => {
+            let pointsArray: Array<[number, number]> = [[cursorX.current, cursorY.current]];
+            setPathPoints(pathPoints => pathPoints.concat([pointsArray]));
+        },
+        continuePath: () => {
+            let tempPathPoints = [...pathPoints.current];
+            tempPathPoints.at(-1)?.push([cursorX.current, cursorY.current]);
+            setPathPoints(tempPathPoints);
+        }
+    };
+
+    const Intersection = {
+        DIST: 3,
+        distSquared: (pointA: [number, number], pointB: [number, number]) => {
+            let deltaX = pointA[0] - pointB[0];
+            let deltaY = pointA[1] - pointB[1];
+            return deltaX * deltaX + deltaY * deltaY; 
+        },
+        withinDistance: (pointA: [number, number], pointB: [number, number], dist: number) => {
+            return Intersection.distSquared(pointA, pointB) < dist * dist;
+        },
+        isIntersecting: (point: [number, number], path: [number, number][]) => {
+            return path.some((pathPoint) => Intersection.withinDistance(pathPoint, point, Intersection.DIST));
+        },
+        getIntersectingPaths: (point: [number, number]) => {
+            return pathPoints.current.filter((path) => Intersection.isIntersecting(point, path));
+        },
+        removePathsOnCursor: () => {
+            setPathPoints(pathPoints => pathPoints.filter((path) => !Intersection.isIntersecting([cursorX.current, cursorY.current], path)));
         }
     };
 
     // Transformations
     const [zoom, setZoom] = useStateRef(1);
     const [transformMatrix, setTransformMatrix] = useStateRef([1, 0, 0, 1, 0, 0]);
-    const TransformHelpers = {
+    const Transform = {
         SCROLL_MULTIPLIER: 3/2000,
         MIN_ZOOM: 0.4,
         MAX_ZOOM: 5,
         scrollZoom: (scrollAmount: number) => {
-            let shouldZoomIn = zoom.current < TransformHelpers.MAX_ZOOM && scrollAmount < 0;
-            let shouldZoomOut = zoom.current > TransformHelpers.MIN_ZOOM && scrollAmount > 0;
+            let shouldZoomIn = zoom.current < Transform.MAX_ZOOM && scrollAmount < 0;
+            let shouldZoomOut = zoom.current > Transform.MIN_ZOOM && scrollAmount > 0;
             if (shouldZoomIn || shouldZoomOut) {
-                let newZoom = Number((zoom.current - TransformHelpers.SCROLL_MULTIPLIER * scrollAmount).toFixed(2));
-                TransformHelpers.adjustZoom(newZoom);
+                let newZoom = Number((zoom.current - Transform.SCROLL_MULTIPLIER * scrollAmount).toFixed(2));
+                Transform.adjustZoom(newZoom);
             }
         },
         adjustZoom: (newZoom: number) => {
