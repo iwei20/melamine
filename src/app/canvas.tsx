@@ -210,6 +210,8 @@ export default function Canvas() {
             let shouldZoomOut = zoom.current > Transform.MIN_ZOOM && scrollAmount > 0;
             if (shouldZoomIn || shouldZoomOut) {
                 let newZoom = Number((zoom.current - Transform.SCROLL_MULTIPLIER * scrollAmount).toFixed(2));
+                newZoom = Math.min(newZoom, Transform.MAX_ZOOM);
+                newZoom = Math.max(newZoom, Transform.MIN_ZOOM);
                 Transform.adjustZoom(newZoom);
             }
         },
