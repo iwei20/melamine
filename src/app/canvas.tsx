@@ -2,7 +2,6 @@
 import { MouseEvent, KeyboardEvent, WheelEvent, useEffect, useRef } from "react";
 import { InputBuilder, InputBindings, InputType, InputTracker } from "./input";
 import { useStateRef } from "./usestateref";
-import path from "path";
 
 enum CanvasMode {
     PATH,
@@ -108,10 +107,14 @@ export default function Canvas() {
     const [inputTracker, setInputTracker] = useStateRef(InputTracker.new());
 
     // Modes
-    const [modeIndex, setModeIndex] = useStateRef(0);
+    const [modeIndex, setModeIndex, modeIndexState] = useStateRef(0);
     const SCROLL_ORDER = [
         CanvasMode.PATH,
         CanvasMode.ERASE,
+    ];
+    const MODE_STRINGS = [
+        "Path",
+        "Erase"
     ];
     const Mode = {
         next: () => {
@@ -199,7 +202,7 @@ export default function Canvas() {
     };
 
     // Transformations
-    const [zoom, setZoom] = useStateRef(1);
+    const [zoom, setZoom, zoomState] = useStateRef(1);
     const [transformMatrix, setTransformMatrix] = useStateRef([1, 0, 0, 1, 0, 0]);
     const Transform = {
         SCROLL_MULTIPLIER: 3/2000,
@@ -216,15 +219,17 @@ export default function Canvas() {
             }
         },
         adjustZoom: (newZoom: number) => {
-            let moveToOriginMatrix = CanvasMatrix.translate(-cursorX.current, -cursorY.current);
-            let scaleMatrix = CanvasMatrix.scale(newZoom / zoom.current);
-            let moveBackMatrix = CanvasMatrix.translate(cursorX.current, cursorY.current);
-            setTransformMatrix(CanvasMatrix.matmul_multiple(
-                moveBackMatrix, 
+            let scaleFactor = newZoom / zoom.current;
+            let moveToOriginMatrix = CanvasMatrix.translate(-rawCursorX.current, -rawCursorY.current);
+            let scaleMatrix = CanvasMatrix.scale(scaleFactor);
+            let moveBackMatrix = CanvasMatrix.translate(rawCursorX.current, rawCursorY.current);
+            setTransformMatrix(transformMatrix => CanvasMatrix.matmul_multiple(
+                moveBackMatrix,
                 scaleMatrix, 
                 moveToOriginMatrix,
-                transformMatrix.current
+                transformMatrix
             ));
+            Mouse.updateMousePos();
             setZoom(newZoom);
         },
         reset: () => {
@@ -242,8 +247,8 @@ export default function Canvas() {
     // Element
     return (<>
         <div className="absolute m-2">
-            <text className="text-black m-2">{Math.round(zoom.current * 100) + "%"}</text>
-            <text className="text-black m-2">{MODE_STRINGS[modeIndex.current]}</text>
+            <text className="text-black m-2">{Math.round(zoomState * 100) + "%"}</text>
+            <text className="text-black m-2">{MODE_STRINGS[modeIndexState]}</text>
             <text className="text-black m-2">{cursorX.current + " " + cursorY.current}</text>
         </div>
         <svg 
