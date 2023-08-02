@@ -157,7 +157,7 @@ export default function Canvas() {
         [CanvasMode.ERASE]: {
             onMouseDown: (e) => {},
             onMouseMove: (e) => {
-
+                Intersection.removePathsOnCursor();
             },
             onMouseUp: (e) => {}
         } as CanvasModeFunctions
@@ -178,7 +178,7 @@ export default function Canvas() {
     };
 
     const Intersection = {
-        DIST: 3,
+        DIST: 5,
         distSquared: (pointA: [number, number], pointB: [number, number]) => {
             let deltaX = pointA[0] - pointB[0];
             let deltaY = pointA[1] - pointB[1];
@@ -239,7 +239,11 @@ export default function Canvas() {
 
     // Element
     return (<>
-        <text className="absolute text-black m-2">{Math.round(zoom.current * 100) + "%"}</text>
+        <div className="absolute m-2">
+            <text className="text-black m-2">{Math.round(zoom.current * 100) + "%"}</text>
+            <text className="text-black m-2">{MODE_STRINGS[modeIndex.current]}</text>
+            <text className="text-black m-2">{cursorX.current + " " + cursorY.current}</text>
+        </div>
         <svg 
             className="bg-white h-screen w-screen" 
             tabIndex={0}
