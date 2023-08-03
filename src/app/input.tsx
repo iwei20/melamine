@@ -270,4 +270,30 @@ export class InputTracker {
             return this.without(MouseInput.fromEvent(inputEvent));
         }
     }
+
+    updateMouseEnter(inputEvent: MouseEvent) {
+        let result: InputTracker = this;
+        let buttonCode = inputEvent.buttons;
+        for (let i = 0; i < 5; ++i, buttonCode /= 2) {
+            let isPressed = buttonCode % 2 === 1;
+            if (isPressed) {
+                result = result.with({
+                    alt: inputEvent.altKey, 
+                    meta: inputEvent.metaKey, 
+                    ctrl: inputEvent.ctrlKey, 
+                    shift: inputEvent.shiftKey, 
+                    button: MOUSE_BUTTONS[i]
+                });
+            } else {
+                result = result.without({
+                    alt: inputEvent.altKey, 
+                    meta: inputEvent.metaKey, 
+                    ctrl: inputEvent.ctrlKey, 
+                    shift: inputEvent.shiftKey, 
+                    button: MOUSE_BUTTONS[i]
+                });
+            }
+        }
+        return result;
+    }
 }

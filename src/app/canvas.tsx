@@ -281,6 +281,13 @@ export default function Canvas() {
             onMouseMove={(e) => {
                 inputBindings.current.onMouseMove(e, inputTracker.current);
             }}
+            onMouseLeave={(e) => {
+                inputBindings.current.onInputUp(e, InputType.MOUSE);
+                setInputTracker(inputTracker => inputTracker.withoutEvent(e, InputType.MOUSE));
+            }}
+            onMouseEnter={(e) => {
+                setInputTracker(inputTracker => inputTracker.updateMouseEnter(e));
+            }}
 
             viewBox={`0 0 ${canvasWidth.current} ${canvasHeight.current}`}
             xmlns="http://www.w3.org/2000/svg"
