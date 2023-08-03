@@ -167,16 +167,28 @@ export default function Canvas() {
     };
 
     // Paths
-    const [pathPoints, setPathPoints] = useStateRef(Array<Array<[number, number]>>());
+    interface PathData {
+        points: Array<[number, number]>,
+        color: [number, number, number],
+        strokeWidth: number,
+    };
+    const [paths, setPaths] = useStateRef(Array<PathData>());
+    const [selectedColor, setSelectedColor] = useStateRef<[number, number, number]>([0, 0, 0]);
+    const [selectedStrokeWidth, setSelectedStrokeWidth] = useStateRef(1);
+
     const Paths = {
         beginPath: () => {
             let pointsArray: Array<[number, number]> = [[cursorX.current, cursorY.current]];
-            setPathPoints(pathPoints => pathPoints.concat([pointsArray]));
+            setPaths(paths => paths.concat([{
+                points: pointsArray,
+                color: selectedColor.current,
+                strokeWidth: selectedStrokeWidth.current,
+            }]));
         },
         continuePath: () => {
-            let tempPathPoints = [...pathPoints.current];
-            tempPathPoints.at(-1)?.push([cursorX.current, cursorY.current]);
-            setPathPoints(tempPathPoints);
+            let tempPathPoints = [...paths.current];
+            tempPathPoints.at(-1)?.points.push([cursorX.current, cursorY.current]);
+            setPaths(tempPathPoints);
         }
     };
 
@@ -194,10 +206,10 @@ export default function Canvas() {
             return path.some((pathPoint) => Intersection.withinDistance(pathPoint, point, Intersection.DIST));
         },
         getIntersectingPaths: (point: [number, number]) => {
-            return pathPoints.current.filter((path) => Intersection.isIntersecting(point, path));
+            return paths.current.filter((path) => Intersection.isIntersecting(point, path.points));
         },
         removePathsOnCursor: () => {
-            setPathPoints(pathPoints => pathPoints.filter((path) => !Intersection.isIntersecting([cursorX.current, cursorY.current], path)));
+            setPaths(pathPoints => pathPoints.filter((path) => !Intersection.isIntersecting([cursorX.current, cursorY.current], path.points)));
         }
     };
 
@@ -293,7 +305,7 @@ export default function Canvas() {
             xmlns="http://www.w3.org/2000/svg"
         >
             <g transform={`matrix(${transformMatrix.current})`} >
-                {pathPoints.current.map((points, index) => <Path key={`path${index}`} points={points} strokeWidth={1/zoom.current}/>)}
+                {paths.current.map((pathData, index) => <Path key={`path${index}`} color={pathData.color} points={pathData.points} strokeWidth={pathData.strokeWidth}/>)}
             </g>
         </svg>
     </>);
@@ -304,6 +316,7 @@ const LINE_TO = "L";
 
 interface PathProps {
     points: Array<[number, number]>
+    color: [number, number, number]
     strokeWidth: number
 }
 
@@ -313,5 +326,5 @@ function Path(prop: PathProps) {
         return `${index === 0 ? MOVE : LINE_TO} ${x} ${y}`;
     }
 
-    return <path d={prop.points.map(pointToStr).join(' ')} stroke="black" strokeWidth={prop.strokeWidth} fill="transparent" shapeRendering="geometricPrecision"/>
+    return <path d={prop.points.map(pointToStr).join(' ')} stroke={`rgb(${prop.color})`} strokeWidth={prop.strokeWidth} fill="transparent" shapeRendering="geometricPrecision"/>
 }
