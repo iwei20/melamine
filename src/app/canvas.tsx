@@ -247,9 +247,9 @@ export default function Canvas() {
     // Element
     return (<>
         <div className="absolute m-2">
-            <text className="text-black m-2">{Math.round(zoomState * 100) + "%"}</text>
+            <text className="text-black m-2">{`${Math.round(zoomState * 100)}%`}</text>
             <text className="text-black m-2">{MODE_STRINGS[modeIndexState]}</text>
-            <text className="text-black m-2">{cursorX.current + " " + cursorY.current}</text>
+            <text className="text-black m-2">{`${cursorX.current.toFixed(2)} ${cursorY.current.toFixed(2)}`}</text>
         </div>
         <svg 
             className="bg-white h-screen w-screen" 
