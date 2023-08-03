@@ -246,7 +246,7 @@ export default function Canvas() {
 
     // Element
     return (<>
-        <div className="absolute m-2">
+        <div className="absolute m-2 select-none bg-zinc-400/[0.8]">
             <text className="text-black m-2">{`${Math.round(zoomState * 100)}%`}</text>
             <text className="text-black m-2">{MODE_STRINGS[modeIndexState]}</text>
             <text className="text-black m-2">{`${cursorX.current.toFixed(2)} ${cursorY.current.toFixed(2)}`}</text>
