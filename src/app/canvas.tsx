@@ -206,7 +206,7 @@ export default function Canvas() {
     const [transformMatrix, setTransformMatrix] = useStateRef([1, 0, 0, 1, 0, 0]);
     const Transform = {
         SCROLL_MULTIPLIER: 3/2000,
-        MIN_ZOOM: 0.4,
+        MIN_ZOOM: 0.1,
         MAX_ZOOM: 5,
         scrollZoom: (scrollAmount: number) => {
             let shouldZoomIn = zoom.current < Transform.MAX_ZOOM && scrollAmount < 0;
