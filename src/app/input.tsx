@@ -98,7 +98,7 @@ namespace WheelInput {
     }
 }
 
-const inputFactory = Record({alt: false, meta: false, ctrl: false, shift: false, button: "none"} as Input);
+export const inputFactory = Record({alt: false, meta: false, ctrl: false, shift: false, button: "none"} as Input);
 
 export interface MouseEntry {
     input: MouseInput;
@@ -245,6 +245,10 @@ export class InputTracker {
 
     static from(held: Set<Record<Input>>) {
         return new InputTracker(held);
+    }
+
+    isHeld(input: Input) {
+        return this.held.get(inputFactory(input));
     }
 
     with(input: Input) {
