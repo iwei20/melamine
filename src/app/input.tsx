@@ -98,7 +98,7 @@ namespace WheelInput {
     }
 }
 
-const factory = Record({alt: false, meta: false, ctrl: false, shift: false, button: "none"} as Input);
+const inputFactory = Record({alt: false, meta: false, ctrl: false, shift: false, button: "none"} as Input);
 
 export interface MouseEntry {
     input: MouseInput;
@@ -174,7 +174,7 @@ export class InputBindings {
 
     readonly registerInputDown = (entry: InputEntry) => {
         return InputBindings.from(
-            this.inputToDown.set(factory(entry.input), entry.callback),
+            this.inputToDown.set(inputFactory(entry.input), entry.callback),
             this.inputToMouseMove,
             this.inputToUp,
         );
@@ -183,7 +183,7 @@ export class InputBindings {
     readonly registerInputMouseMove = (entry: MouseMoveEntry) => {
         return InputBindings.from(
             this.inputToDown,
-            this.inputToMouseMove.set(factory(entry.input), entry.callback),
+            this.inputToMouseMove.set(inputFactory(entry.input), entry.callback),
             this.inputToUp,
         );
     }
@@ -192,22 +192,22 @@ export class InputBindings {
         return InputBindings.from(
             this.inputToDown,
             this.inputToMouseMove,
-            this.inputToUp.set(factory(entry.input), entry.callback),
+            this.inputToUp.set(inputFactory(entry.input), entry.callback),
         );
     }
 
     readonly onInputDown = (e: KeyboardEvent | MouseEvent | WheelEvent, inputType: InputType) => {
         if (isKeyboardEvent(e, inputType)) {
             let input = KeyInput.fromEvent(e);
-            let inputCallback = this.inputToDown.get(factory(input));
+            let inputCallback = this.inputToDown.get(inputFactory(input));
             if (inputCallback !== undefined) (inputCallback as (e: KeyboardEvent) => void).call(null, e);
         } else if (isMouseEvent(e, inputType)) {
             let input = MouseInput.fromEvent(e);
-            let inputCallback = this.inputToDown.get(factory(input));
+            let inputCallback = this.inputToDown.get(inputFactory(input));
             if (inputCallback !== undefined) (inputCallback as (e: MouseEvent) => void).call(null, e);
         } else if (isWheelEvent(e, inputType)) {
             let input = WheelInput.fromEvent(e);
-            let inputCallback = this.inputToDown.get(factory(input));
+            let inputCallback = this.inputToDown.get(inputFactory(input));
             if (inputCallback !== undefined) inputCallback.call(null, e);
         }
     }
@@ -222,11 +222,11 @@ export class InputBindings {
     readonly onInputUp = (e: KeyboardEvent | MouseEvent, inputType: InputType) => {
         if (isKeyboardEvent(e, inputType)) {
             let input = KeyInput.fromEvent(e);
-            let inputCallback = this.inputToUp.get(factory(input));
+            let inputCallback = this.inputToUp.get(inputFactory(input));
             if (inputCallback !== undefined) (inputCallback as (e: KeyboardEvent) => void).call(null, e);
         } else if (isMouseEvent(e, inputType)) {
             let input = MouseInput.fromEvent(e);
-            let inputCallback = this.inputToUp.get(factory(input));
+            let inputCallback = this.inputToUp.get(inputFactory(input));
             if (inputCallback !== undefined) (inputCallback as (e: MouseEvent) => void).call(null, e);
         } 
     }
@@ -240,7 +240,7 @@ export class InputTracker {
     }
 
     static new() {
-        return new InputTracker(Set<Record<MouseInput | KeyInput>>([factory(InputBuilder.none())]))
+        return new InputTracker(Set<Record<MouseInput | KeyInput>>([inputFactory(InputBuilder.none())]))
     }
 
     static from(held: Set<Record<Input>>) {
@@ -248,11 +248,11 @@ export class InputTracker {
     }
 
     with(input: Input) {
-        return InputTracker.from(this.held.add(factory(input)));
+        return InputTracker.from(this.held.add(inputFactory(input)));
     }
 
     without(input: Input) {
-        return InputTracker.from(this.held.remove(factory(input)));
+        return InputTracker.from(this.held.remove(inputFactory(input)));
     }
 
     withEvent(inputEvent: KeyboardEvent | MouseEvent, inputType: InputType) {
