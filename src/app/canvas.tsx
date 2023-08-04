@@ -1,7 +1,9 @@
 "use client"
-import { MouseEvent, KeyboardEvent, WheelEvent, useEffect, useRef } from "react";
+import { MouseEvent, KeyboardEvent, WheelEvent, useEffect, useRef, useState, CSSProperties } from "react";
 import { InputBuilder, InputBindings, InputType, InputTracker } from "./input";
 import { useStateRef } from "./usestateref";
+import { Chip } from "@mui/material";
+import { RGBColor, SketchPicker } from 'react-color';
 
 enum CanvasMode {
     PATH,
@@ -173,7 +175,6 @@ export default function Canvas() {
         strokeWidth: number,
     };
     const [paths, setPaths] = useStateRef(Array<PathData>());
-    const [selectedColor, setSelectedColor] = useStateRef<[number, number, number]>([0, 0, 0]);
     const [selectedStrokeWidth, setSelectedStrokeWidth] = useStateRef(1);
 
     const Paths = {
@@ -181,7 +182,7 @@ export default function Canvas() {
             let pointsArray: Array<[number, number]> = [[cursorX.current, cursorY.current]];
             setPaths(paths => paths.concat([{
                 points: pointsArray,
-                color: selectedColor.current,
+                color: [sketchPickerColor.current.r, sketchPickerColor.current.g, sketchPickerColor.current.b],
                 strokeWidth: selectedStrokeWidth.current,
             }]));
         },
@@ -253,16 +254,48 @@ export default function Canvas() {
     // SVG Focus
     const svgRef = useRef<SVGSVGElement>(null);
     useEffect(() => {
-        if (svgRef.current !== null) svgRef.current.focus();
+        let activeIsInput = document.activeElement === null;
+        if (document.activeElement !== null) {
+            for (let element of document.querySelectorAll('input[id^=rc-editable-input]')) {
+                activeIsInput ||= document.activeElement.isEqualNode(element);
+            }
+        }
+        if (svgRef.current !== null && !activeIsInput) svgRef.current.focus();
+    });
+
+    const [sketchPickerColor, setSketchPickerColor] = useStateRef<RGBColor>({r: 0, g: 0, b: 0, a: 1});
+    const modeToMenu = {
+        [CanvasMode.PATH]: (<>
+            <SketchPicker 
+            color={sketchPickerColor.current} 
+            onChange={(color) => setSketchPickerColor(color.rgb)} 
+            className="select-none absolute m-1 right-0 text-black" 
+            disableAlpha={true}
+            />
+        </>),
+
+        [CanvasMode.ERASE]: (<></>)
+    }
+
+    useEffect(() => {
+        for (let element of document.querySelectorAll<HTMLElement>('input[id^=rc-editable-input]')) {
+            element.style.width = "100%";
+        }
     });
 
     // Element
     return (<>
-        <div className="absolute m-2 select-none bg-zinc-400/[0.8]">
-            <text className="text-black m-2">{`${Math.round(zoomState * 100)}%`}</text>
-            <text className="text-black m-2">{MODE_STRINGS[modeIndexState]}</text>
-            <text className="text-black m-2">{`${cursorX.current.toFixed(2)} ${cursorY.current.toFixed(2)}`}</text>
+        {/* Upper left info stub */}
+        <div className="absolute m-2 select-none">
+            <Chip label={`${Math.round(zoomState * 100)}%`} className="m-1" />
+            <Chip label={MODE_STRINGS[modeIndexState]} className="m-1" />
+            <Chip label={`${cursorX.current.toFixed(2)} ${cursorY.current.toFixed(2)}`} className="m-1" />
         </div>
+
+        {/* Bar select */}
+        {modeToMenu[SCROLL_ORDER[modeIndex.current]]}
+        
+        {/* Main drawing area */}
         <svg 
             className="bg-white h-screen w-screen" 
             tabIndex={0}
@@ -270,6 +303,7 @@ export default function Canvas() {
 
             onMouseDown={(e) => {
                 e.preventDefault();
+                if (svgRef.current !== null) svgRef.current.focus();
                 inputBindings.current.onInputDown(e, InputType.MOUSE);
                 setInputTracker(inputTracker => inputTracker.withEvent(e, InputType.MOUSE));
             }} 
