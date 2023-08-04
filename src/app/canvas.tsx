@@ -294,7 +294,7 @@ export default function Canvas() {
 
         {/* Bar select */}
         {modeToMenu[SCROLL_ORDER[modeIndex.current]]}
-        
+        {inputTracker.current.held.get(inputFactory())}
         {/* Main drawing area */}
         <svg 
             className="bg-white h-screen w-screen" 
