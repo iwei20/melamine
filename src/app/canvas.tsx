@@ -50,6 +50,7 @@ export default function Canvas() {
     const [cursorX, setCursorX] = useStateRef(0);
     const [cursorY, setCursorY] = useStateRef(0);
     const [mouseHooked, setMouseHooked] = useStateRef(0);
+    const [pathIsQueued, setPathIsQueued] = useStateRef(false);
     const MOUSE_HOOKED_COUNT = 2;
     const Mouse = {
         updateRawMousePos: (e: MouseEvent) => {
@@ -181,20 +182,30 @@ export default function Canvas() {
     const [selectedStrokeWidth, setSelectedStrokeWidth] = useStateRef(1);
 
     const Paths = {
+        addNew: (paths: PathData[]) => {
+            return paths.concat([{
+                points: [[cursorX.current, cursorY.current]],
+                color: [sketchPickerColor.current.r, sketchPickerColor.current.g, sketchPickerColor.current.b],
+                strokeWidth: selectedStrokeWidth.current,
+            }])
+        },
         beginPath: () => {
             if (mouseHooked.current > MOUSE_HOOKED_COUNT) {
-                const pointsArray: Array<[number, number]> = [[cursorX.current, cursorY.current]];
-                setPaths(paths => paths.concat([{
-                    points: pointsArray,
-                    color: [sketchPickerColor.current.r, sketchPickerColor.current.g, sketchPickerColor.current.b],
-                    strokeWidth: selectedStrokeWidth.current,
-                }]));
+                setPaths(paths => Paths.addNew(paths));
+            } else {
+                setPathIsQueued(true);
             }
         },
         continuePath: () => {
-            let tempPathPoints = [...paths.current];
-            tempPathPoints.at(-1)?.points.push([cursorX.current, cursorY.current]);
-            setPaths(tempPathPoints);
+            setPaths(paths => {
+                let tempPathPoints = [...paths];
+                if (pathIsQueued.current && mouseHooked.current > MOUSE_HOOKED_COUNT + 2) {
+                    tempPathPoints = Paths.addNew(tempPathPoints);
+                    setPathIsQueued(false);
+                }
+                tempPathPoints.at(-1)?.points.push([cursorX.current, cursorY.current]);
+                return tempPathPoints;
+            });
         }
     };
 
@@ -276,13 +287,16 @@ export default function Canvas() {
     // SVG Focus
     const svgRef = useRef<SVGSVGElement>(null);
     useEffect(() => {
-        let activeIsInput = document.activeElement === null;
+        const whitelistFocusable = [
+            ...document.querySelectorAll('input[id^=rc-editable-input]'),
+        ];
+        let activeIsWhitelisted = document.activeElement === null;
         if (document.activeElement !== null) {
-            for (let element of document.querySelectorAll('input[id^=rc-editable-input]')) {
-                activeIsInput ||= document.activeElement.isEqualNode(element);
+            for (let element of whitelistFocusable) {
+                activeIsWhitelisted ||= document.activeElement.isEqualNode(element);
             }
         }
-        if (svgRef.current !== null && !activeIsInput) svgRef.current.focus();
+        if (svgRef.current !== null && !activeIsWhitelisted) svgRef.current.focus();
     });
 
     const [sketchPickerColor, setSketchPickerColor] = useStateRef<RGBColor>({r: 0, g: 0, b: 0, a: 1});
