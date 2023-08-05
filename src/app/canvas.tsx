@@ -1,5 +1,5 @@
 "use client"
-import { MouseEvent, KeyboardEvent, WheelEvent, useEffect, useRef, useState, CSSProperties } from "react";
+import { MouseEvent, KeyboardEvent, WheelEvent, useEffect, useRef } from "react";
 import { InputBuilder, InputBindings, InputType, InputTracker } from "./input";
 import { useStateRef } from "./usestateref";
 import { Chip } from "@mui/material";
@@ -106,7 +106,7 @@ export default function Canvas() {
                         callback: (e: KeyboardEvent) => Mode.next()
                     })
     );
-    const [inputTracker, setInputTracker] = useStateRef(InputTracker.new());
+    const [inputTracker, setInputTracker, inputTrackerState] = useStateRef(InputTracker.new());
 
     // Modes
     const [modeIndex, setModeIndex, modeIndexState] = useStateRef(0);
@@ -179,7 +179,7 @@ export default function Canvas() {
 
     const Paths = {
         beginPath: () => {
-            let pointsArray: Array<[number, number]> = [[cursorX.current, cursorY.current]];
+            const pointsArray: Array<[number, number]> = [[cursorX.current, cursorY.current]];
             setPaths(paths => paths.concat([{
                 points: pointsArray,
                 color: [sketchPickerColor.current.r, sketchPickerColor.current.g, sketchPickerColor.current.b],
@@ -194,17 +194,34 @@ export default function Canvas() {
     };
 
     const Intersection = {
-        DIST: 5,
+        DIST: 20,
         distSquared: (pointA: [number, number], pointB: [number, number]) => {
-            let deltaX = pointA[0] - pointB[0];
-            let deltaY = pointA[1] - pointB[1];
+            const deltaX = pointA[0] - pointB[0];
+            const deltaY = pointA[1] - pointB[1];
             return deltaX * deltaX + deltaY * deltaY; 
         },
         withinDistance: (pointA: [number, number], pointB: [number, number], dist: number) => {
             return Intersection.distSquared(pointA, pointB) < dist * dist;
         },
+        closestLinePoint: (linePointA: [number, number], linePointB: [number, number], soloPoint: [number, number]): [number, number] => {
+            const lineVector = [linePointB[0] - linePointA[0], linePointB[1] - linePointA[1]];
+            const pointVector = [soloPoint[0] - linePointA[0], soloPoint[1] - linePointA[1]];
+            const dotprod = lineVector[0] * pointVector[0] + lineVector[1] * pointVector[1];
+            const lineVectorNorm = lineVector[0] * lineVector[0] + lineVector[1] + lineVector[1];
+
+            if (lineVectorNorm === 0) return linePointA;
+
+            const t = dotprod / lineVectorNorm;
+            if (t >= 0 && t <= 1) return [t * lineVector[0] + linePointA[0], t * lineVector[1] + linePointA[1]];
+            else if (t < 0) return linePointA;
+            else return linePointB;
+        },
         isIntersecting: (point: [number, number], path: [number, number][]) => {
-            return path.some((pathPoint) => Intersection.withinDistance(pathPoint, point, Intersection.DIST));
+            return path.some((pathPoint, index) => {
+                if (index + 1 >= path.length) return false;
+                const closestPoint = Intersection.closestLinePoint(pathPoint, path[index + 1], point);
+                return Intersection.withinDistance(closestPoint, point, Intersection.DIST);
+            });
         },
         getIntersectingPaths: (point: [number, number]) => {
             return paths.current.filter((path) => Intersection.isIntersecting(point, path.points));
@@ -222,8 +239,8 @@ export default function Canvas() {
         MIN_ZOOM: 0.1,
         MAX_ZOOM: 5,
         scrollZoom: (scrollAmount: number) => {
-            let shouldZoomIn = zoom.current < Transform.MAX_ZOOM && scrollAmount < 0;
-            let shouldZoomOut = zoom.current > Transform.MIN_ZOOM && scrollAmount > 0;
+            const shouldZoomIn = zoom.current < Transform.MAX_ZOOM && scrollAmount < 0;
+            const shouldZoomOut = zoom.current > Transform.MIN_ZOOM && scrollAmount > 0;
             if (shouldZoomIn || shouldZoomOut) {
                 let newZoom = Number((zoom.current - Transform.SCROLL_MULTIPLIER * scrollAmount).toFixed(2));
                 newZoom = Math.min(newZoom, Transform.MAX_ZOOM);
@@ -232,10 +249,10 @@ export default function Canvas() {
             }
         },
         adjustZoom: (newZoom: number) => {
-            let scaleFactor = newZoom / zoom.current;
-            let moveToOriginMatrix = CanvasMatrix.translate(-rawCursorX.current, -rawCursorY.current);
-            let scaleMatrix = CanvasMatrix.scale(scaleFactor);
-            let moveBackMatrix = CanvasMatrix.translate(rawCursorX.current, rawCursorY.current);
+            const scaleFactor = newZoom / zoom.current;
+            const moveToOriginMatrix = CanvasMatrix.translate(-rawCursorX.current, -rawCursorY.current);
+            const scaleMatrix = CanvasMatrix.scale(scaleFactor);
+            const moveBackMatrix = CanvasMatrix.translate(rawCursorX.current, rawCursorY.current);
             setTransformMatrix(transformMatrix => CanvasMatrix.matmul_multiple(
                 moveBackMatrix,
                 scaleMatrix, 
@@ -246,7 +263,7 @@ export default function Canvas() {
             setZoom(newZoom);
         },
         reset: () => {
-            let identity = [1, 0, 0, 1, 0, 0];
+            const identity = [1, 0, 0, 1, 0, 0];
             setTransformMatrix(identity);
         }
     };
@@ -281,10 +298,11 @@ export default function Canvas() {
         for (let element of document.querySelectorAll<HTMLElement>('input[id^=rc-editable-input]')) {
             element.style.width = "100%";
         }
-    });
+    }, []);
 
     // Element
     return (<>
+        <div className="bg-white h-screen w-screen absolute -z-50" />
         {/* Upper left info stub */}
         <div className="absolute m-2 select-none">
             <Chip label={`${Math.round(zoomState * 100)}%`} className="m-1" />
@@ -294,10 +312,19 @@ export default function Canvas() {
 
         {/* Bar select */}
         {modeToMenu[SCROLL_ORDER[modeIndex.current]]}
-        {inputTracker.current.held.get(inputFactory())}
+        <div
+            style={{
+                display: inputTrackerState.isHeld(InputBuilder.fromMouse(0).build()) && SCROLL_ORDER[modeIndex.current] === CanvasMode.ERASE ? "" : "none",
+                width: `${Intersection.DIST}px`,
+                height: `${Intersection.DIST}px`,
+                left: `${rawCursorX.current - Intersection.DIST / 2}px`,
+                top: `${rawCursorY.current - Intersection.DIST / 2}px`,
+            }}
+            className={"absolute rounded-full bg-yellow-500 select-none -z-10"} />
+
         {/* Main drawing area */}
         <svg 
-            className="bg-white h-screen w-screen" 
+            className="absolute bg-transparent h-screen w-screen" 
             tabIndex={0}
             ref={svgRef}
 
