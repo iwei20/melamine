@@ -49,6 +49,8 @@ export default function Canvas() {
     const [rawCursorY, setRawCursorY, rawCursorYState] = useStateRef(0);
     const [cursorX, setCursorX] = useStateRef(0);
     const [cursorY, setCursorY] = useStateRef(0);
+    const [mouseHooked, setMouseHooked] = useStateRef(0);
+    const MOUSE_HOOKED_COUNT = 2;
     const Mouse = {
         updateRawMousePos: (e: MouseEvent) => {
             setRawCursorX(e.pageX);
@@ -62,6 +64,7 @@ export default function Canvas() {
             setCursorY(point.y);
         },
     };
+    useEffect(() => setMouseHooked(status => status + 1), [rawCursorXState, rawCursorYState]);
 
     // Resizing/viewBox
     const [canvasWidth, setCanvasWidth] = useStateRef(0);
@@ -179,12 +182,14 @@ export default function Canvas() {
 
     const Paths = {
         beginPath: () => {
-            const pointsArray: Array<[number, number]> = [[cursorX.current, cursorY.current]];
-            setPaths(paths => paths.concat([{
-                points: pointsArray,
-                color: [sketchPickerColor.current.r, sketchPickerColor.current.g, sketchPickerColor.current.b],
-                strokeWidth: selectedStrokeWidth.current,
-            }]));
+            if (mouseHooked.current > MOUSE_HOOKED_COUNT) {
+                const pointsArray: Array<[number, number]> = [[cursorX.current, cursorY.current]];
+                setPaths(paths => paths.concat([{
+                    points: pointsArray,
+                    color: [sketchPickerColor.current.r, sketchPickerColor.current.g, sketchPickerColor.current.b],
+                    strokeWidth: selectedStrokeWidth.current,
+                }]));
+            }
         },
         continuePath: () => {
             let tempPathPoints = [...paths.current];
@@ -286,7 +291,7 @@ export default function Canvas() {
             <SketchPicker 
             color={sketchPickerColor.current} 
             onChange={(color) => setSketchPickerColor(color.rgb)} 
-            className="select-none absolute m-1 right-0 text-black" 
+            className="select-none absolute m-1 right-0 text-black z-10" 
             disableAlpha={true}
             />
         </>),
@@ -304,7 +309,7 @@ export default function Canvas() {
     return (<>
         <div className="bg-white h-screen w-screen absolute -z-50" />
         {/* Upper left info stub */}
-        <div className="absolute m-2 select-none">
+        <div className="absolute m-2 select-none z-10">
             <Chip label={`${Math.round(zoomState * 100)}%`} className="m-1" />
             <Chip label={MODE_STRINGS[modeIndexState]} className="m-1" />
             <Chip label={`${cursorX.current.toFixed(2)} ${cursorY.current.toFixed(2)}`} className="m-1" />
