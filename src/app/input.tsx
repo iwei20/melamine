@@ -248,7 +248,7 @@ export class InputTracker {
     }
 
     isHeld(input: Input) {
-        return this.held.get(inputFactory(input));
+        return this.held.has(inputFactory(input));
     }
 
     with(input: Input) {
