@@ -45,8 +45,8 @@ namespace CanvasMatrix {
 
 export default function Canvas() {
     // Cursor
-    const [rawCursorX, setRawCursorX] = useStateRef(0);
-    const [rawCursorY, setRawCursorY] = useStateRef(0);
+    const [rawCursorX, setRawCursorX, rawCursorXState] = useStateRef(0);
+    const [rawCursorY, setRawCursorY, rawCursorYState] = useStateRef(0);
     const [cursorX, setCursorX] = useStateRef(0);
     const [cursorY, setCursorY] = useStateRef(0);
     const Mouse = {
@@ -317,8 +317,8 @@ export default function Canvas() {
                 display: inputTrackerState.isHeld(InputBuilder.fromMouse(0).build()) && SCROLL_ORDER[modeIndex.current] === CanvasMode.ERASE ? "" : "none",
                 width: `${Intersection.DIST}px`,
                 height: `${Intersection.DIST}px`,
-                left: `${rawCursorX.current - Intersection.DIST / 2}px`,
-                top: `${rawCursorY.current - Intersection.DIST / 2}px`,
+                left: `${rawCursorXState - Intersection.DIST / 2}px`,
+                top: `${rawCursorYState - Intersection.DIST / 2}px`,
             }}
             className={"absolute rounded-full bg-yellow-500 select-none -z-10"} />
 
