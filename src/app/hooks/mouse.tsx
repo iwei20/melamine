@@ -6,8 +6,12 @@ export function useMouse() {
     const [rawCursorY, setRawCursorY, rawCursorYState] = useStateRef(0);
     const [cursorX, setCursorX, cursorXState] = useStateRef(0);
     const [cursorY, setCursorY, cursorYState] = useStateRef(0);
+    const [rawDeltaX, setRawDeltaX, rawDeltaXState] = useStateRef(0);
+    const [rawDeltaY, setRawDeltaY, rawDeltaYState] = useStateRef(0);
 
     const updateRawMousePos = (e: MouseEvent) => {
+        setRawDeltaX(e.pageX - rawCursorX.current);
+        setRawDeltaY(e.pageY - rawCursorY.current);
         setRawCursorX(e.pageX);
         setRawCursorY(e.pageY);
     };
@@ -36,6 +40,14 @@ export function useMouse() {
         cursorY: {
             ref: cursorY,
             state: cursorYState
+        },
+        rawDeltaX: {
+            ref: rawDeltaX,
+            state: rawDeltaXState,
+        },
+        rawDeltaY: {
+            ref: rawDeltaY,
+            state: rawDeltaYState,
         },
         updateRawMousePos: updateRawMousePos,
         updateMousePos: updateMousePos,

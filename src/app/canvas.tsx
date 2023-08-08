@@ -17,8 +17,8 @@ import { InfoBar } from "./components/info_bar";
 import { useCanvasInput } from "./hooks/canvas_input";
 
 export default function Canvas() {
-    const [selectedStrokeWidth, setSelectedStrokeWidth, strokeWidthState] = useStateRef(1);
-    const [sketchPickerColor, setSketchPickerColor, sketchPickerColorState] = useStateRef<RGBColor>({r: 0, g: 0, b: 0, a: 1});
+    const [selectedStrokeWidth, setSelectedStrokeWidth, selectedStrokeWidthState] = useStateRef(1);
+    const [selectedColor, setSelectedColor, selectedColorState] = useStateRef<RGBColor>({r: 0, g: 0, b: 0, a: 1});
     const [inputTracker, setInputTracker, inputTrackerState] = useStateRef(InputTracker.new());
 
     const { windowWidth, windowHeight } = useWindowSize();
@@ -27,14 +27,16 @@ export default function Canvas() {
     const pathsHook = usePaths(
         mouseHook,
         selectedStrokeWidth,
-        sketchPickerColor,
+        selectedColor,
     );
     const svgRef = useFocus();
 
     const modesHook = useModes({
         [CanvasMode.PATH]: {
-            sketchPickerColor: sketchPickerColorState, 
-            setSketchPickerColor: setSketchPickerColor,
+            selectedColor: selectedColorState, 
+            setSelectedColor: setSelectedColor,
+            strokeWidth: selectedStrokeWidthState,
+            setStrokeWidth: setSelectedStrokeWidth,
         },
         [CanvasMode.ERASE]: {
             primaryIsHeld: inputTrackerState.isHeld(InputBuilder.fromMouse(0).build()),
@@ -58,6 +60,14 @@ export default function Canvas() {
             onMouseDown: (e) => {},
             onMouseMove: (e) => {
                 pathsHook.removePathsOnCursor();
+            },
+            onMouseUp: (e) => {}
+        } as CanvasModeFunctions
+
+        [CanvasMode.MOVE]: {
+            onMouseDown: (e) => {},
+            onMouseMove: (e) => {
+
             },
             onMouseUp: (e) => {}
         } as CanvasModeFunctions

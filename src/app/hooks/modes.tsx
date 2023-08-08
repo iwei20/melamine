@@ -5,7 +5,8 @@ import { MouseEvent, useState } from "react";
 
 export enum CanvasMode {
     PATH,
-    ERASE
+    ERASE,
+    MOVE,
 };
 
 export interface CanvasModeFunctions {
@@ -33,11 +34,12 @@ export function useModes(props: ModeMenuProps) {
             display_name: "Path", 
             mode_specific_element: (
                 <PathMenu 
-                    sketchPickerColor={props[CanvasMode.PATH].sketchPickerColor} 
-                    setSketchPickerColor={props[CanvasMode.PATH].setSketchPickerColor} 
+                    selectedColor={props[CanvasMode.PATH].selectedColor} 
+                    setSelectedColor={props[CanvasMode.PATH].setSelectedColor} 
+                    strokeWidth={props[CanvasMode.PATH].strokeWidth}
+                    setStrokeWidth={props[CanvasMode.PATH].setStrokeWidth}
                 />
             ),
-            
         },
         {
             mode: CanvasMode.ERASE, 
@@ -51,6 +53,11 @@ export function useModes(props: ModeMenuProps) {
                 />
             )
         },
+        {
+            mode: CanvasMode.MOVE,
+            display_name: "Move",
+            mode_specific_element: (<></>),
+        }
     ];
 
     const setToNext = () => {
