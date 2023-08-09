@@ -12,6 +12,10 @@ export function useTransform(mouseHook: ReturnType<typeof useMouse>) {
     const [zoom, setZoom, zoomState] = useStateRef(1);
     const [transformMatrix, setTransformMatrix, transformMatrixState] = useStateRef([1, 0, 0, 1, 0, 0]);
 
+    const move = (deltaX: number, deltaY: number) => {
+        setTransformMatrix(matrix => CanvasMatrix.matmul(CanvasMatrix.translate(deltaX, deltaY), matrix));
+    }
+
     const scrollZoom = (scrollAmount: number) => {
         const shouldZoomIn = zoom.current < MAX_ZOOM && scrollAmount < 0;
         const shouldZoomOut = zoom.current > MIN_ZOOM && scrollAmount > 0;
@@ -54,6 +58,7 @@ export function useTransform(mouseHook: ReturnType<typeof useMouse>) {
             state: transformMatrixState,
         },
         scrollZoom: scrollZoom,
+        move: move,
         reset: reset,
     }
 }

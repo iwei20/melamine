@@ -62,15 +62,15 @@ export default function Canvas() {
                 pathsHook.removePathsOnCursor();
             },
             onMouseUp: (e) => {}
-        } as CanvasModeFunctions
+        } as CanvasModeFunctions,
 
         [CanvasMode.MOVE]: {
             onMouseDown: (e) => {},
             onMouseMove: (e) => {
-
+                transformHook.move(mouseHook.rawDeltaX.ref.current, mouseHook.rawDeltaY.ref.current);
             },
             onMouseUp: (e) => {}
-        } as CanvasModeFunctions
+        } as CanvasModeFunctions,
     };
 
     const [inputBindings, setInputBindings, inputBindingsState] = useStateRef(
