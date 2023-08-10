@@ -135,6 +135,7 @@ export default function Canvas() {
             cursorY={mouseHook.cursorY.state}
             rawCursorX={mouseHook.rawCursorX.state}
             rawCursorY={mouseHook.rawCursorY.state}
+            isMouseDown={inputTracker.current.isHeld(InputBuilder.fromMouse(0).build())}
         />
 
         {modesHook.currModeData.mode_specific_element}

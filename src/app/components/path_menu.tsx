@@ -19,7 +19,7 @@ export function PathMenu(props: PathMenuProps) {
 
     useMouseOverAndDownHide(props.rawCursorX, props.rawCursorY, divRef, setVisible, props.isMouseDown);
 
-    return (<div ref={divRef} className={`absolute select-none right-0 top-0 z-10 p-1 flex flex-col bg-white rounded-sm pointer-events-none ${visible ? "" : "invisible"}`}>
+    return (<div ref={divRef} className={`absolute select-none right-0 top-0 z-10 p-3 flex flex-col bg-transparent rounded-sm pointer-events-none ${visible ? "" : "invisible"}`}>
         <SketchPicker 
             color={props.selectedColor} 
             onChange={(color) => props.setSelectedColor(color.rgb)} 
@@ -27,7 +27,7 @@ export function PathMenu(props: PathMenuProps) {
             disableAlpha={true}
         />
         <TextField 
-            className="m-1 text-black pointer-events-auto"
+            className="m-1 text-black bg-gray-200 pointer-events-auto"
             id="filled-basic" 
             label="Stroke Width" 
             variant="filled"
