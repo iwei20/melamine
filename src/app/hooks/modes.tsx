@@ -33,27 +33,13 @@ export function useModes(props: ModeMenuProps) {
         {
             mode: CanvasMode.PATH, 
             display_name: "Path", 
-            mode_specific_element: (
-                <PathMenu 
-                    selectedColor={props[CanvasMode.PATH].selectedColor} 
-                    setSelectedColor={props[CanvasMode.PATH].setSelectedColor} 
-                    strokeWidth={props[CanvasMode.PATH].strokeWidth}
-                    setStrokeWidth={props[CanvasMode.PATH].setStrokeWidth}
-                />
-            ),
+            mode_specific_element: <PathMenu {...props[CanvasMode.PATH]} />,
             tailwindCursorClass: "cursor-crosshair",
         },
         {
             mode: CanvasMode.ERASE, 
             display_name: "Erase", 
-            mode_specific_element: (
-                <EraseCursor
-                    primaryIsHeld={props[CanvasMode.ERASE].primaryIsHeld}
-                    diameter={props[CanvasMode.ERASE].diameter}
-                    rawCursorX={props[CanvasMode.ERASE].rawCursorX}
-                    rawCursorY={props[CanvasMode.ERASE].rawCursorY}
-                />
-            ),
+            mode_specific_element: <EraseCursor {...props[CanvasMode.ERASE]} />,
             tailwindCursorClass: "cursor-default",
         },
         {

@@ -39,6 +39,9 @@ export default function Canvas() {
             setSelectedColor: setSelectedColor,
             strokeWidth: selectedStrokeWidthState,
             setStrokeWidth: setSelectedStrokeWidth,
+            rawCursorX: mouseHook.rawCursorX.state,
+            rawCursorY: mouseHook.rawCursorY.state,
+            isMouseDown: inputTrackerState.isHeld(InputBuilder.fromMouse(0).build()),
         },
         [CanvasMode.ERASE]: {
             primaryIsHeld: inputTrackerState.isHeld(InputBuilder.fromMouse(0).build()),
@@ -130,6 +133,8 @@ export default function Canvas() {
             modeName={modesHook.currModeData.display_name} 
             cursorX={mouseHook.cursorX.state}
             cursorY={mouseHook.cursorY.state}
+            rawCursorX={mouseHook.rawCursorX.state}
+            rawCursorY={mouseHook.rawCursorY.state}
         />
 
         {modesHook.currModeData.mode_specific_element}
