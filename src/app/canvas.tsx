@@ -15,6 +15,7 @@ import { useFocus } from "./hooks/focus";
 import { Background } from "./components/background";
 import { InfoBar } from "./components/info_bar";
 import { useCanvasInput } from "./hooks/canvas_input";
+import { useSketchPickerFix } from "./hooks/sketch_picker_fix";
 
 export default function Canvas() {
     const [selectedStrokeWidth, setSelectedStrokeWidth, selectedStrokeWidthState] = useStateRef(1);
@@ -30,6 +31,7 @@ export default function Canvas() {
         selectedColor,
     );
     const svgRef = useFocus();
+    useSketchPickerFix();
 
     const modesHook = useModes({
         [CanvasMode.PATH]: {
