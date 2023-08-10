@@ -19,6 +19,7 @@ interface ModeData {
     mode: CanvasMode,
     display_name: string,
     mode_specific_element: JSX.Element,
+    tailwindCursorClass: string,
 }
 
 export interface ModeMenuProps {
@@ -40,6 +41,7 @@ export function useModes(props: ModeMenuProps) {
                     setStrokeWidth={props[CanvasMode.PATH].setStrokeWidth}
                 />
             ),
+            tailwindCursorClass: "cursor-crosshair",
         },
         {
             mode: CanvasMode.ERASE, 
@@ -51,12 +53,14 @@ export function useModes(props: ModeMenuProps) {
                     rawCursorX={props[CanvasMode.ERASE].rawCursorX}
                     rawCursorY={props[CanvasMode.ERASE].rawCursorY}
                 />
-            )
+            ),
+            tailwindCursorClass: "cursor-default",
         },
         {
             mode: CanvasMode.MOVE,
             display_name: "Move",
             mode_specific_element: (<></>),
+            tailwindCursorClass: "cursor-move",
         }
     ];
 

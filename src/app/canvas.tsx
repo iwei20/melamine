@@ -133,7 +133,7 @@ export default function Canvas() {
         {modesHook.currModeData.mode_specific_element}
         
         <svg 
-            className="absolute bg-transparent h-screen w-screen" 
+            className={`absolute bg-transparent h-screen w-screen ${modesHook.currModeData.tailwindCursorClass}`} 
             tabIndex={0}
             ref={svgRef}
 
